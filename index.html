@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matriz Pi · Generador y Lector</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1f;--mut:#65656b;--line:#dcdad4;--acc:#4B0082;--accfg:#fff;--ok:#127a3d;--bad:#b3261e;--soft:#efeeea}
+@media (prefers-color-scheme:dark){:root{--bg:#141417;--card:#1d1d22;--ink:#ececf0;--mut:#9d9da6;--line:#34343c;--acc:#b18cff;--accfg:#14101c;--ok:#5fd18a;--bad:#ff8a80;--soft:#26262c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:4px 0 2px}
+.sub{color:var(--mut);margin:0 0 16px}
+.tabs{display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.tab{background:none;border:0;border-bottom:3px solid transparent;color:var(--mut);padding:10px 14px;font:inherit;font-weight:600;cursor:pointer}
+.tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px}
+label{display:block;font-weight:600;font-size:13px;margin:10px 0 4px}
+textarea,select,input[type=number]{width:100%;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit}
+textarea.txt{font-size:16px;line-height:1.6}
+textarea{min-height:130px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+button.b{background:var(--acc);color:var(--accfg);border:0;border-radius:8px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}
+button.b.sec{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+button.b:disabled{opacity:.45;cursor:not-allowed}
+.hint{color:var(--mut);font-size:13px;margin:6px 0 0}
+.status{min-height:22px;margin-top:10px;font-size:14px}
+.status.err{color:var(--bad);font-weight:600}
+.leg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 9px 2px 3px;background:var(--card)}
+.chip i{width:16px;height:16px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.25)}
+.preview{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+canvas.mat{image-rendering:pixelated;max-width:100%;border:1px solid var(--line);background:#000}
+.stats{font-size:14px;min-width:220px}
+.stats div{display:flex;justify-content:space-between;gap:16px;border-bottom:1px dashed var(--line);padding:3px 0}
+.stats b{font-variant-numeric:tabular-nums}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--mut);cursor:pointer}
+.drop.over{border-color:var(--acc);color:var(--ink)}
+ul.checks{list-style:none;padding:0;margin:8px 0 0;font-size:14px}
+ul.checks li{padding:3px 0}
+ul.checks .ok::before{content:"✔ ";color:var(--ok);font-weight:700}
+ul.checks .bad::before{content:"✘ ";color:var(--bad);font-weight:700}
+.verdict{margin-top:10px;font-weight:700;font-size:16px}
+.verdict.ok{color:var(--ok)}.verdict.bad{color:var(--bad)}
+details{margin-top:8px}summary{cursor:pointer;color:var(--mut)}
+.hidden{display:none}
+.camara{position:relative;background:#000;border-radius:10px;overflow:hidden;max-width:560px;margin-top:10px}
+.camara video{display:block;width:100%;height:auto}
+.guia{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:3px dashed #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none}
+.guia::after{content:"Encuadre la matriz dentro del recuadro";position:absolute;left:0;right:0;bottom:-26px;color:#fff;font-size:12px;text-align:center;text-shadow:0 0 4px #000}
+.voz{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}.voz label{display:flex;align-items:center;gap:6px;margin:0;font-weight:400}.voz select{width:auto}
+button.b.rec{background:var(--bad);color:#fff}
+.leyendo{outline:2px solid var(--acc);outline-offset:2px}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Matriz Pi · Generador y Lector</h1>
+  <p class="sub">Convierte texto en español en una matriz cromática (valor cromático de cada letra, posiciones gobernadas por los dígitos de π) y extrae el texto de vuelta. Todo ocurre en tu navegador.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabGen" aria-selected="true">Generador (código tipo QR)</button>
+    <button class="tab" role="tab" id="tabLee" aria-selected="false">Lector / Extractor</button>
+  </div>
+
+  <div class="card" id="vozCard"><h2>Voz</h2>
+    <div class="voz">
+      <button class="b" id="vLeer" type="button">Leer el texto del lector</button>
+      <button class="b sec" id="vParar" type="button">Detener la voz</button>
+      <label><input type="checkbox" id="vAuto" checked> Leer el texto automáticamente al extraer</label>
+      <label for="vModo">Texto reconstruido</label>
+      <select id="vModo"><option value="letras">Deletrear letra por letra</option><option value="corrido">Leer corrido</option></select>
+    </div>
+    <p class="hint" id="vEstado" role="status">Para dictar, pulse «Dictar» junto al cuadro de texto y hable en español.</p>
+  </div>
+  <div class="card"><h2>Paleta inmutable del protocolo</h2><div class="leg" id="leyenda"></div></div>
+
+  <!-- ================= GENERADOR ================= -->
+  <section id="panGen">
+    <div class="card">
+      <h2>Texto de entrada</h2>
+      <textarea id="gTexto" class="txt" placeholder="Pega aquí texto en español. Solo se usan las letras A–Z y Ñ; se quitan tildes y diéresis y el resto se ignora."></textarea>
+      <div class="btns">
+        <input type="file" id="gArchivo" accept=".txt,.json,text/plain,application/json" class="hidden">
+        <button class="b sec" id="gCargar" type="button">Cargar .txt / .json…</button>
+        <button class="b sec" id="gEjemplo" type="button">Ejemplo (El Quijote)</button>
+        <button class="b sec" id="gDictar" type="button" data-destino="gTexto">Dictar</button>
+      </div>
+      <div class="row">
+        <div>
+          <label for="gModo">Modo</label>
+          <select id="gModo">
+            <option value="auto">Autónomo (QR): 2 celdas por letra, se decodifica solo con la imagen</option>
+            <option value="puro">Protocolo puro: 1 celda por letra + índice CSV</option>
+          </select>
+        </div>
+        <div>
+          <label for="gEscala">Píxeles por celda</label>
+          <input type="number" id="gEscala" value="8" min="1" max="64">
+        </div>
+      </div>
+      <p class="hint" id="gModoHint"></p>
+      <div class="btns"><button class="b" id="gGenerar" type="button">Generar matriz</button></div>
+      <div class="status" id="gEstado"></div>
+    </div>
+
+    <div class="card hidden" id="gSalida">
+      <h2>Resultado</h2>
+      <div class="preview">
+        <canvas id="gCanvas" class="mat"></canvas>
+        <div class="stats" id="gInfo"></div>
+      </div>
+      <div class="btns">
+        <button class="b" id="gPng" type="button">Descargar PNG</button>
+        <button class="b sec hidden" id="gCsv" type="button">Índice CSV</button>
+        <button class="b sec hidden" id="gMeta" type="button">metadatos.json</button>
+        <button class="b sec hidden" id="gPi" type="button">pi_digitos.txt</button>
+        <button class="b sec" id="gLeer" type="button">Probar en el lector →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LECTOR ================= -->
+  <section id="panLee" class="hidden">
+    <div class="card">
+      <h2>Imagen PNG</h2>
+      <div class="drop" id="rDrop">Arrastra aquí el PNG o haz clic para elegirlo<br><span id="rNombre"></span></div>
+      <input type="file" id="rPng" accept="image/png" class="hidden">
+      <details>
+        <summary>Archivos opcionales (matrices del protocolo puro / verificación)</summary>
+        <div class="row">
+          <div><label for="rCsv">indice_coordenadas.csv</label><input type="file" id="rCsv" accept=".csv,text/csv"></div>
+          <div><label for="rMeta">metadatos.json</label><input type="file" id="rMeta" accept=".json,application/json"></div>
+          <div><label for="rPi">pi_digitos.txt (acelera la lectura)</label><input type="file" id="rPi" accept=".txt,text/plain"></div>
+        </div>
+        <div class="row">
+          <div><label for="rEscala">Píxeles por celda (vacío = detectar)</label><input type="number" id="rEscala" min="1" max="256" placeholder="auto"></div>
+          <div><label><input type="checkbox" id="rTol"> Modo tolerante (color más cercano)</label>
+            <p class="hint">Solo si la imagen pasó por una conversión de color. Por defecto la lectura es estricta: coincidencia exacta de RGB.</p></div>
+        </div>
+      </details>
+      <div class="btns"><button class="b" id="rLeer" type="button" disabled>Extraer texto</button></div>
+      <div class="status" id="rEstado"></div>
+    </div>
+
+    <div class="card" id="camCard">
+      <h2>Cámara</h2>
+      <p class="hint">Abre la cámara del computador o del celular y lee el código directamente de una pantalla o de una hoja impresa. Mantenga la cámara quieta, de frente y con buena luz.</p>
+      <div class="btns">
+        <button class="b" id="cAbrir" type="button">Abrir cámara</button>
+        <button class="b sec hidden" id="cAlternar" type="button">Cambiar de cámara</button>
+        <button class="b sec hidden" id="cCerrar" type="button">Cerrar cámara</button>
+      </div>
+      <div class="camara hidden" id="cMarco"><video id="cVideo" playsinline muted autoplay></video><div class="guia" id="cGuia"></div></div>
+      <div class="row hidden" id="cControles">
+        <div><label for="cSel">Cámara</label><select id="cSel"></select></div>
+        <div><label for="cTam">Tamaño del recuadro (%)</label><input type="range" id="cTam" min="40" max="100" value="90"></div>
+        <div><label for="cLado">Celdas por lado (vacío = detectar)</label><input type="number" id="cLado" min="2" max="300" placeholder="auto"></div>
+        <div><label><input type="checkbox" id="cContinuo" checked> Escaneo continuo (modo autónomo)</label></div>
+      </div>
+      <div class="btns hidden" id="cAcciones">
+        <button class="b" id="cCapturar" type="button">Capturar y leer</button>
+      </div>
+      <div class="btns">
+        <input type="file" id="cFoto" accept="image/*" capture="environment" class="hidden">
+        <button class="b sec" id="cTomar" type="button">Tomar foto o elegir imagen</button>
+      </div>
+      <p class="hint">En el celular, «Tomar foto» abre la cámara del teléfono aunque la página no pueda abrirla directamente. La cámara directa necesita una dirección segura (https) o abrir el archivo en el mismo equipo.</p>
+      <div class="status" id="cEstado"></div>
+    </div>
+
+    <div class="card hidden" id="rSalida">
+      <h2>Verificación</h2>
+      <ul class="checks" id="rChecks"></ul>
+      <div class="verdict" id="rVeredicto"></div>
+      <div id="rTextoBox" class="hidden">
+        <label for="rTexto">Texto reconstruido</label>
+        <textarea id="rTexto" class="txt" readonly></textarea>
+        <div class="btns">
+          <button class="b" id="rCopiar" type="button">Copiar</button>
+          <button class="b sec" id="rBajar" type="button">Descargar .txt</button>
+        </div>
+      </div>
+    </div>
+    <div class="card hidden" id="rTrad">
+      <h2>Traducción de colores a texto</h2>
+      <p class="hint">Esta imagen no trae el texto completo: cada color es un valor del 1 al 9 y cada valor corresponde a tres letras. Aquí se traducen los colores al orden del texto y se muestran las letras posibles en cada posición.</p>
+      <label for="tValores">Valores en orden de texto (1–9)</label>
+      <textarea id="tValores" class="txt" readonly></textarea>
+      <label for="tCandidatas">Letras posibles por posición</label>
+      <textarea id="tCandidatas" class="txt" readonly></textarea>
+      <label for="tPropuesta">Comprobar un texto propuesto contra los colores</label>
+      <textarea id="tPropuesta" class="txt" placeholder="Escribe o pega el texto que crees que contiene la imagen"></textarea>
+      <div class="btns"><button class="b sec" id="tDictar" type="button" data-destino="tPropuesta">Dictar</button><button class="b" id="tComprobar" type="button">Comprobar</button></div>
+      <div class="status" id="tEstado"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+'use strict';
+function calcularPi(nDig) {
+  const D = BigInt(nDig + 20);
+  const C3_24 = 640320n ** 3n / 24n;
+  function bitLen(n){ return n.toString(16).length * 4; }
+  function isqrt(n) {
+    if (n < (1n << 52n)) return BigInt(Math.floor(Math.sqrt(Number(n))));
+    const k = BigInt(Math.max(1, (bitLen(n) >> 2) - 32));
+    let x = isqrt(n >> (2n * k)) << k;
+    for (;;) { const y = (x + n / x) >> 1n; if (y === x || y === x + 1n || y === x - 1n) { x = y; break; } x = y; }
+    while (x * x > n) x -= 1n;
+    while ((x + 1n) * (x + 1n) <= n) x += 1n;
+    return x;
+  }
+  function bs(a, b) {
+    if (b - a === 1n) {
+      let P, Q;
+      if (a === 0n) { P = 1n; Q = 1n; }
+      else { P = (6n * a - 5n) * (2n * a - 1n) * (6n * a - 1n); Q = a * a * a * C3_24; }
+      let T = P * (13591409n + 545140134n * a);
+      if (a & 1n) T = -T;
+      return [P, Q, T];
+    }
+    const m = (a + b) / 2n;
+    const [Pa, Qa, Ta] = bs(a, m), [Pb, Qb, Tb] = bs(m, b);
+    return [Pa * Pb, Qa * Qb, Qb * Ta + Pa * Tb];
+  }
+  const [, Q, T] = bs(0n, D / 14n + 2n);
+  const uno = 10n ** D;
+  const pi = (Q * 426880n * isqrt(10005n * uno * uno)) / T;
+  return pi.toString().slice(1, nDig + 1);
+}
+
+
+/* ============================ PROTOCOLO ============================ */
+const HEX = Object.freeze({1:'#8A2BE2',2:'#FF7F00',3:'#FFFF00',4:'#00FF00',5:'#00FFFF',6:'#0000FF',7:'#4B0082',8:'#FF0000',9:'#C70039'});
+const RGB = Object.freeze({1:[138,43,226],2:[255,127,0],3:[255,255,0],4:[0,255,0],5:[0,255,255],6:[0,0,255],7:[75,0,130],8:[255,0,0],9:[199,0,57]});
+const NOMBRE_COLOR = {1:'Violeta',2:'Naranja',3:'Amarillo',4:'Verde',5:'Azul cian',6:'Azul profundo',7:'Índigo',8:'Rojo',9:'Rojo rubí'};
+// Alfabeto español de 27 letras. Valor cromático = 1 + ((posición − 1) mod 9): cada valor agrupa exactamente tres letras.
+const ALFABETO = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ';
+const POSICION = new Map([...ALFABETO].map((l, i) => [l, i + 1]));
+const valorDe = l => 1 + (POSICION.get(l) - 1) % 9;
+// La posición dentro del grupo es el "sub-índice" del modo autónomo
+const GRUPOS = Object.freeze(Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8, 9].map(v => [v, [...ALFABETO].filter(l => valorDe(l) === v).join('')])));
+const LETRA_A_VS = new Map();
+for (const v of Object.keys(GRUPOS)) [...GRUPOS[v]].forEach((ch, i) => LETRA_A_VS.set(ch, [+v, i + 1]));
+(function autoprueba(){            // la tabla de grupos debe cubrir el alfabeto completo y la paleta no puede ser ambigua
+  if (LETRA_A_VS.size !== 27) throw new Error('Tabla de grupos inconsistente');
+  for (const [l, [v]] of LETRA_A_VS) if (valorDe(l) !== v) throw new Error('Tabla de grupos inconsistente: ' + l);
+  const cod = new Set(Object.values(RGB).map(c => c.join())); if (cod.size !== 9) throw new Error('Paleta ambigua');
+})();
+const COD_A_VALOR = new Map(Object.entries(RGB).map(([v, c]) => [(c[0] << 16) | (c[1] << 8) | c[2], +v]));
+/* Procesamiento de texto: mayúsculas, sin tildes ni diéresis (la Ñ se conserva), solo letras del alfabeto español. */
+function soloLetras(texto) {
+  const s = String(texto).toUpperCase().replace(/Ñ/g, '\u0001').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\u0001/g, 'Ñ');
+  return s.match(/[A-ZÑ]/g) || [];
+}
+const textoDeArchivo = s => { const c = s.trimStart()[0]; if (c === '[' || c === '{') { try { const j = JSON.parse(s); const bl = Array.isArray(j) ? j : (j.bloques || []); return bl.map(b => typeof b === 'string' ? b : (b.texto || '')).join(' '); } catch (e) { /* se trata como texto plano */ } } return s; };
+const DIG_POR_PASO = 7;
+const MAX_L_AUTO = 9 ** 6 - 1;       // 6 celdas de cabecera en base 9
+
+/* ============================ UTILIDADES ============================ */
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString('es');
+const digitosDe = s => { const d = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) d[i] = s.charCodeAt(i) - 48; return d; };
+const nextTick = () => new Promise(r => setTimeout(r, 15));
+function estado(el, msg, err) { el.textContent = msg; el.classList.toggle('err', !!err); }
+function descargar(nombre, blobOrText, tipo) {
+  const blob = blobOrText instanceof Blob ? blobOrText : new Blob([blobOrText], { type: tipo || 'text/plain;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+async function sha256(txt) {
+  if (!(window.crypto && crypto.subtle)) return null;
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt)));
+  return [...h].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* ============================ π ============================ */
+const PI = { digs: null };
+function calcularPiAsync(n) {
+  return new Promise(resolve => {
+    let hecho = false;
+    const fin = v => { if (!hecho) { hecho = true; resolve(v); } };
+    const enHilo = () => setTimeout(() => fin(calcularPi(n)), 30);
+    try {
+      const src = calcularPi.toString() + '\nself.onmessage=e=>postMessage(calcularPi(e.data));';
+      const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+      const w = new Worker(url);
+      w.onmessage = e => { fin(e.data); w.terminate(); URL.revokeObjectURL(url); };
+      w.onerror = () => { w.terminate(); enHilo(); };
+      w.postMessage(n);
+    } catch (e) { enHilo(); }
+  });
+}
+async function asegurarPi(n, el) {
+  if (PI.digs && PI.digs.length >= n) return PI.digs;
+  estado(el, `Calculando ${fmt(n)} dígitos de π… (los grandes tardan; el resto de la página sigue activa)`);
+  const t = performance.now();
+  const s = await calcularPiAsync(n);
+  PI.digs = digitosDe(s); PI.str = s;
+  estado(el, `π listo (${fmt(n)} dígitos, ${((performance.now() - t) / 1000).toFixed(1)} s).`);
+  return PI.digs;
+}
+const digitosNecesarios = n => DIG_POR_PASO * Math.max(n - 1, 1) + 10;
+
+// Fisher-Yates dirigido por 7 dígitos consecutivos de π. destino[k] = celda del término k.
+function trayectoria(n, digs) {
+  const perm = new Uint32Array(n);
+  for (let i = 0; i < n; i++) perm[i] = i;
+  let p = 0;
+  for (let i = n - 1; i > 0; i--) {
+    let j = 0;
+    for (let q = 0; q < DIG_POR_PASO; q++) j = j * 10 + digs[p + q];
+    p += DIG_POR_PASO;
+    j %= (i + 1);
+    const t = perm[i]; perm[i] = perm[j]; perm[j] = t;
+  }
+  return perm;
+}
+
+/* ============================ FORMATO AUTÓNOMO (QR) ============================
+   Orden lógico de celdas:  [6 cabecera: L en base 9] [2 checksum] [2 por letra: valor, sub-índice] [relleno]
+   La primera celda de cada par es SIEMPRE el color del valor cromático del protocolo.
+   Todas las celdas se dispersan con la trayectoria de π. El relleno sale de dígitos de π.     */
+function checksumAuto(vs, ss) {
+  let c = 0;
+  for (let k = 0; k < vs.length; k++) c = (c + (vs[k] * 5 + ss[k]) * ((k % 251) + 1)) % 81;
+  return c;
+}
+const ladoAuto = L => Math.max(4, Math.ceil(Math.sqrt(8 + 2 * L)));
+
+function secuenciaAuto(letras, digs, side) {
+  const L = letras.length, N = side * side, util = 8 + 2 * L;
+  const seq = new Uint8Array(N);
+  let r = L;
+  for (let k = 5; k >= 0; k--) { seq[k] = (r % 9) + 1; r = Math.floor(r / 9); }
+  const vs = new Uint8Array(L), ss = new Uint8Array(L);
+  letras.forEach((l, k) => { const [v, s] = LETRA_A_VS.get(l); vs[k] = v; ss[k] = s; seq[8 + 2 * k] = v; seq[9 + 2 * k] = s; });
+  const c = checksumAuto(vs, ss);
+  seq[6] = Math.floor(c / 9) + 1; seq[7] = (c % 9) + 1;
+  for (let i = util; i < N; i++) seq[i] = (digs[i] % 9) + 1;
+  return seq;
+}
+
+function decodificarAuto(grilla, side, digs) {
+  const N = side * side, perm = trayectoria(N, digs);
+  const seq = new Uint8Array(N);
+  for (let k = 0; k < N; k++) seq[k] = grilla[perm[k]];
+  let L = 0;
+  for (let k = 0; k < 6; k++) L = L * 9 + (seq[k] - 1);
+  if (8 + 2 * L > N || ladoAuto(L) !== side) return { ok: false, motivo: `cabecera incoherente (L=${fmt(L)} no corresponde a una matriz de ${side}×${side})` };
+  const vs = new Uint8Array(L), ss = new Uint8Array(L), out = new Array(L);
+  for (let k = 0; k < L; k++) {
+    vs[k] = seq[8 + 2 * k]; ss[k] = seq[9 + 2 * k];
+    const g = GRUPOS[vs[k]]; const l = g && g[ss[k] - 1];
+    if (!l) return { ok: false, motivo: `par (valor ${vs[k]}, sub-índice ${ss[k]}) inexistente en la letra ${k + 1}` };
+    out[k] = l;
+  }
+  const c = checksumAuto(vs, ss), cl = (seq[6] - 1) * 9 + (seq[7] - 1);
+  if (c !== cl) return { ok: false, motivo: 'el checksum no coincide (imagen alterada o no es del modo autónomo)' };
+  let relleno = 0; for (let i = 8 + 2 * L; i < N; i++) if (seq[i] !== (digs[i] % 9) + 1) relleno++;
+  return { ok: true, texto: out.join(''), L, relleno_alterado: relleno, relleno: N - (8 + 2 * L) };
+}
+
+/* ============================ IMAGEN ============================ */
+function pintar(canvas, grilla, side, escala) {
+  const W = side * escala; canvas.width = W; canvas.height = W;
+  const ctx = canvas.getContext('2d'); const img = ctx.createImageData(W, W); const d = img.data;
+  for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) {
+    const c = RGB[grilla[y * side + x]];
+    for (let dy = 0; dy < escala; dy++) { let o = ((y * escala + dy) * W + x * escala) * 4;
+      for (let dx = 0; dx < escala; dx++, o += 4) { d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255; } }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function divisores(n) { const r = []; for (let i = 1; i * i <= n; i++) if (n % i === 0) { r.push(i); if (i * i !== n) r.push(n / i); } return r.sort((a, b) => b - a); }
+function bloquesUniformes(d, W, e) {
+  for (let y = 0; y < W; y++) { const yo = y - (y % e);
+    for (let x = 0; x < W; x++) { const xo = x - (x % e); if (xo === x && yo === y) continue;
+      const a = (y * W + x) * 4, b = (yo * W + xo) * 4;
+      if (d[a] !== d[b] || d[a + 1] !== d[b + 1] || d[a + 2] !== d[b + 2]) return false; } }
+  return true;
+}
+
+// Lectura estricta: dimensión exacta, bloques de un único color, colores exactos de la paleta.
+function leerGrilla(imgData, escalaForzada, tolerante) {
+  const { width: W, height: H, data: d } = imgData;
+  if (W !== H) throw new Error(`la imagen no es cuadrada (${W}×${H})`);
+  for (let i = 3; i < d.length; i += 4) if (d[i] !== 255) throw new Error('la imagen tiene píxeles con transparencia');
+  let e = escalaForzada;
+  if (!e) {
+    e = divisores(W).filter(v => W / v >= 4).find(v => bloquesUniformes(d, W, v));
+    if (!e && tolerante) e = null;
+    if (!e) throw new Error('no se detecta una retícula de celdas uniformes (¿imagen redimensionada o comprimida con pérdida?). Indica los píxeles por celda en "Archivos opcionales".');
+  }
+  if (W % e) throw new Error(`${W} px no es múltiplo de ${e} px por celda: la imagen fue redimensionada o recortada`);
+  const side = W / e;
+  if (!tolerante && !bloquesUniformes(d, W, e)) throw new Error('hay celdas que no son un bloque de un único color (interpolación o ruido)');
+  const grilla = new Uint8Array(side * side); let corregidos = 0, fuera = null;
+  const claves = [...COD_A_VALOR.keys()];
+  const c0 = Math.floor(e / 2);
+  for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) {
+    const o = ((y * e + (tolerante ? c0 : 0)) * W + x * e + (tolerante ? c0 : 0)) * 4;
+    const cod = (d[o] << 16) | (d[o + 1] << 8) | d[o + 2];
+    let v = COD_A_VALOR.get(cod);
+    if (!v) {
+      if (!tolerante) { fuera = fuera || { x, y, rgb: [d[o], d[o + 1], d[o + 2]], n: 0 }; fuera.n++; continue; }
+      let mejor = 1e18;
+      for (const k of claves) { const dr = d[o] - (k >> 16), dg = d[o + 1] - ((k >> 8) & 255), db = d[o + 2] - (k & 255); const dist = dr * dr + dg * dg + db * db; if (dist < mejor) { mejor = dist; v = COD_A_VALOR.get(k); } }
+      corregidos++;
+    }
+    grilla[y * side + x] = v;
+  }
+  if (fuera) throw new Error(`${fmt(fuera.n)} celdas con color fuera de la paleta; primera en (x=${fuera.x}, y=${fuera.y}): RGB(${fuera.rgb.join(', ')})`);
+  return { side, escala: e, grilla, corregidos, W };
+}
+
+/* ============================ GENERADOR (UI) ============================ */
+const G = { };
+function extraerLetras(txt) {
+  const terminos = soloLetras(txt);
+  let ignorados = 0; for (const ch of txt) if (!/\s/.test(ch) && !soloLetras(ch).length) ignorados++;
+  return { terminos, ignorados };
+}
+
+async function generar() {
+  const el = $('#gEstado'), modo = $('#gModo').value;
+  const escala = Math.max(1, Math.min(64, parseInt($('#gEscala').value) || 8));
+  try {
+    const { terminos, ignorados } = extraerLetras($('#gTexto').value);
+    if (!terminos.length) throw new Error('No hay letras del alfabeto español en el texto.');
+    $('#gGenerar').disabled = true;
+    let side, N, usados, omitidos = 0, relleno = 0;
+    if (modo === 'auto') {
+      if (terminos.length > MAX_L_AUTO) throw new Error(`Máximo ${fmt(MAX_L_AUTO)} letras en modo autónomo.`);
+      usados = terminos.length; side = ladoAuto(usados); N = side * side; relleno = N - (8 + 2 * usados);
+    } else {
+      side = Math.floor(Math.sqrt(terminos.length)); N = side * side; usados = N; omitidos = terminos.length - N;
+      if (side < 1) throw new Error('Se necesita al menos 1 letra.');
+    }
+    const digs = await asegurarPi(digitosNecesarios(N), el);
+    await nextTick();
+    const perm = trayectoria(N, digs);
+    const grilla = new Uint8Array(N);
+    let seq;
+    if (modo === 'auto') seq = secuenciaAuto(terminos, digs, side);
+    else { seq = new Uint8Array(N); for (let k = 0; k < N; k++) seq[k] = valorDe(terminos[k]); }
+    for (let k = 0; k < N; k++) grilla[perm[k]] = seq[k];
+    pintar($('#gCanvas'), grilla, side, escala);
+    $('#gCanvas').style.width = Math.min(side * escala, 440) + 'px';
+    G.total = terminos.length; G.modo = modo; G.side = side; G.escala = escala; G.N = N; G.perm = perm; G.grilla = grilla; G.terminos = terminos.slice(0, usados);
+    const filas = [['Modo', modo === 'auto' ? 'Autónomo (QR)' : 'Protocolo puro'], ['Letras codificadas', fmt(usados)],
+      ['Matriz', `${side} × ${side} = ${fmt(N)} celdas`], ['Imagen', `${side * escala} × ${side * escala} px`],
+      ['Dígitos de π usados', fmt(digitosNecesarios(N))]];
+    if (modo === 'auto') filas.push(['Celdas de relleno (π)', fmt(relleno)]);
+    else filas.push(['Letras omitidas al final', fmt(omitidos)]);
+    if (ignorados) filas.push(['Caracteres ignorados', fmt(ignorados)]);
+    $('#gInfo').innerHTML = filas.map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
+    for (const id of ['#gCsv', '#gMeta', '#gPi']) $(id).classList.toggle('hidden', modo === 'auto' && id !== '#gMeta' ? true : false);
+    $('#gMeta').classList.remove('hidden');
+    $('#gSalida').classList.remove('hidden');
+    estado(el, 'Listo.');
+  } catch (e) { estado(el, e.message, true); }
+  finally { $('#gGenerar').disabled = false; }
+}
+
+function csvIndice() {
+  const { side, N, perm, grilla, terminos } = G;
+  const term = new Array(N), pos = new Int32Array(N);
+  for (let k = 0; k < N; k++) { term[perm[k]] = terminos[k]; pos[perm[k]] = k; }
+  const filas = ['x,y,posicion_texto,termino,valor_cromatico,R,G,B,hex'];
+  for (let c = 0; c < N; c++) { const v = grilla[c], r = RGB[v]; filas.push(`${c % side},${Math.floor(c / side)},${pos[c]},${term[c]},${v},${r[0]},${r[1]},${r[2]},${HEX[v]}`); }
+  return filas.join('\n') + '\n';
+}
+async function metadatosJson() {
+  const cuenta = {}; for (let v = 1; v <= 9; v++) cuenta[v] = 0; for (const v of G.grilla) cuenta[v]++;
+  const m = { generado_por: 'matriz_pi.html', alfabeto: ALFABETO, regla_valor: '1 + ((posicion_en_alfabeto - 1) mod 9)', terminos_en_json: G.total, terminos_omitidos: G.total - G.terminos.length, modo: G.modo === 'auto' ? 'autonomo' : 'puro', lado: G.side, escala_png: G.escala,
+    terminos_usados: G.modo === 'auto' ? G.terminos.length : G.N, digitos_pi_usados: digitosNecesarios(G.N), digitos_por_paso: DIG_POR_PASO,
+    algoritmo: 'Fisher-Yates dirigido por digitos decimales consecutivos de pi', colores: HEX, conteo_por_valor: cuenta };
+  if (G.modo === 'puro') m.sha256_texto_usado = await sha256(G.terminos.join(''));
+  return JSON.stringify(m, null, 2);
+}
+
+/* ============================ LECTOR (UI) ============================ */
+const R = { png: null, nombre: '' };
+async function cargarImagen(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' }); ctx.drawImage(img, 0, 0);
+    return ctx.getImageData(0, 0, c.width, c.height);
+  } finally { URL.revokeObjectURL(url); }
+}
+function setPng(file) {
+  R.png = file; $('#rNombre').textContent = file ? file.name : ''; $('#rLeer').disabled = !file;
+}
+
+function parseIndice(txt, side) {
+  const n = side * side, term = new Array(n), val = new Uint8Array(n), pos = new Int32Array(n).fill(-1);
+  let i = txt.indexOf('\n') + 1, vistos = 0; const len = txt.length;
+  while (i < len) {
+    let e = txt.indexOf('\n', i); if (e < 0) e = len;
+    const f = txt.slice(i, e).replace('\r', '').split(','); i = e + 1;
+    if (f.length < 9) continue;
+    const x = +f[0], y = +f[1];
+    if (!(x >= 0 && x < side && y >= 0 && y < side)) throw new Error(`coordenada fuera de la matriz en el índice: (${f[0]},${f[1]})`);
+    const c = y * side + x; if (term[c] !== undefined) throw new Error(`celda duplicada en el índice: (${x},${y})`);
+    const v = +f[4], rgb = RGB[v];
+    if (!rgb || rgb[0] !== +f[5] || rgb[1] !== +f[6] || rgb[2] !== +f[7] || HEX[v] !== f[8].trim()) throw new Error(`color del índice distinto al protocolo en (${x},${y})`);
+    if (!POSICION.has(f[3][0]) || valorDe(f[3][0]) !== v) throw new Error(`valor cromático o letra incorrectos en el índice en (${x},${y})`);
+    term[c] = f[3]; val[c] = v; pos[c] = +f[2]; vistos++;
+  }
+  if (vistos !== n) throw new Error(`el índice cubre ${fmt(vistos)} de ${fmt(n)} celdas`);
+  return { term, val, pos };
+}
+
+async function extraer(pre) {
+  const el = $('#rEstado'), checks = []; let texto = null, traduccion = false; R.seq = null; $('#rTrad').classList.add('hidden');
+  const chk = (ok, t) => checks.push({ ok, t });
+  $('#rLeer').disabled = true; $('#rSalida').classList.add('hidden'); detenerVoz();
+  try {
+    estado(el, 'Leyendo la imagen…'); await nextTick();
+    let meta = null;
+    if ($('#rMeta').files[0]) meta = JSON.parse(await $('#rMeta').files[0].text());
+    const esc = parseInt($('#rEscala').value) || (meta && meta.escala_png) || 0;
+    const g = pre ? { side: pre.side, escala: 0, grilla: pre.grilla, corregidos: 0, W: 0, camara: true } : leerGrilla(await cargarImagen(R.png), esc, $('#rTol').checked);
+    const { side, grilla } = g, N = side * side;
+    chk(true, g.camara ? `Cámara: matriz ${side}×${side} (${fmt(N)} celdas) leída por muestreo del centro de cada celda, con el color más cercano de la paleta` : `PNG ${g.W}×${g.W} px · celdas de ${g.escala}×${g.escala} px · matriz ${side}×${side} (${fmt(N)} celdas) · bloques uniformes y colores exactos de la paleta`);
+    if (g.corregidos) chk(false, `modo tolerante: ${fmt(g.corregidos)} celdas se asignaron al color más cercano`);
+    if (meta && meta.lado) chk(meta.lado === side, `el lado de metadatos.json (${meta.lado}) coincide con el lado de la imagen (${side})`);
+
+    if ($('#rPi').files[0]) {
+      const s = (await $('#rPi').files[0].text()).trim();
+      if (s.length >= digitosNecesarios(N)) { PI.digs = digitosDe(s); chk(true, `π cargado desde archivo (${fmt(s.length)} dígitos)`); }
+      else chk(false, `pi_digitos.txt tiene ${fmt(s.length)} dígitos y se necesitan ${fmt(digitosNecesarios(N))}; se calculará`);
+    }
+    const digs = await asegurarPi(digitosNecesarios(N), el);
+    estado(el, 'Aplicando la trayectoria inversa de π…'); await nextTick();
+
+    const csv = $('#rCsv').files[0];
+    if (!csv) {
+      const r = decodificarAuto(grilla, side, digs);
+      if (!r.ok) {
+        chk(false, 'Modo autónomo: ' + r.motivo);
+        const perm = trayectoria(N, digs), seq = new Uint8Array(N); for (let k = 0; k < N; k++) seq[k] = grilla[perm[k]];
+        R.seq = seq; traduccion = true;
+        chk(true, `Colores traducidos al orden del texto: ${fmt(N)} valores. Cada valor admite tres letras; para recuperar el texto exacto carga indice_coordenadas.csv en "Archivos opcionales".`);
+        throw Object.assign(new Error('traduccion'), { traduccion: true });
+      }
+      chk(true, `Modo autónomo: cabecera correcta (${fmt(r.L)} letras) y checksum válido`);
+      chk(r.relleno_alterado === 0, `${fmt(r.relleno)} celdas de relleno coinciden con los dígitos de π`);
+      texto = r.texto;
+    } else {
+      estado(el, 'Leyendo el índice de coordenadas…'); await nextTick();
+      const { term, val, pos } = parseIndice(await csv.text(), side);
+      chk(true, 'Índice: cubre todas las celdas una sola vez, colores y valores acordes al protocolo');
+      let dif = 0, primero = -1; for (let c = 0; c < N; c++) if (grilla[c] !== val[c]) { dif++; if (primero < 0) primero = c; }
+      chk(dif === 0, dif ? `${fmt(dif)} píxeles no coinciden con el índice; primero en (x=${primero % side}, y=${Math.floor(primero / side)})` : 'Cada píxel coincide con el índice en el 100 % de las celdas');
+      const perm = trayectoria(N, digs); let malo = 0;
+      for (let k = 0; k < N; k++) if (pos[perm[k]] !== k) malo++;
+      chk(malo === 0, malo ? `${fmt(malo)} posiciones del índice no corresponden a la trayectoria de π` : 'La posición de texto del índice coincide con la trayectoria de π');
+      if (dif === 0 && malo === 0) { const partes = new Array(N); for (let k = 0; k < N; k++) partes[k] = term[perm[k]]; texto = partes.join(''); }
+      if (texto && meta && meta.sha256_texto_usado) {
+        const h = await sha256(texto);
+        if (h) chk(h === meta.sha256_texto_usado, 'la huella SHA-256 del texto coincide con la registrada al codificar'); else chk(true, 'SHA-256 no disponible en este contexto del navegador (se omite)');
+      }
+    }
+    if (texto) chk(true, `${fmt(soloLetras(texto).length)} letras reconstruidas`);
+    estado(el, '');
+  } catch (e) { if (e.traduccion) estado(el, ''); else { estado(el, e.message, true); chk(false, e.message); } texto = null; }
+  const ok = checks.every(c => c.ok) && texto !== null;
+  $('#rChecks').innerHTML = checks.map(c => `<li class="${c.ok ? 'ok' : 'bad'}"></li>`).join('');
+  [...$('#rChecks').children].forEach((li, i) => li.append(checks[i].t));
+  const v = $('#rVeredicto'); v.className = 'verdict ' + (ok ? 'ok' : 'bad');
+  v.textContent = ok ? 'RECONSTRUCCIÓN ÍNTEGRA (100 % coincidencia)' : (texto ? 'TEXTO RECUPERADO CON ADVERTENCIAS' : (traduccion ? 'TRADUCCIÓN PARCIAL: los colores no identifican una letra única' : 'VERIFICACIÓN FALLIDA'));
+  $('#rTextoBox').classList.toggle('hidden', !texto); if (texto) $('#rTexto').value = texto;
+  if (traduccion && R.seq) {
+    $('#tValores').value = [...R.seq].join('').replace(/(.{50})/g, '$1\n');
+    $('#tCandidatas').value = [...R.seq].map(v => GRUPOS[v].split('').join('/')).join('  ');
+    $('#tPropuesta').value = ''; estado($('#tEstado'), ''); $('#rTrad').classList.remove('hidden');
+  }
+  $('#rSalida').classList.remove('hidden'); $('#rLeer').disabled = !R.png;
+  if ($('#vAuto').checked) leerResultado();
+}
+$('#tComprobar').onclick = () => {
+  const L = soloLetras($('#tPropuesta').value), seq = R.seq, el = $('#tEstado');
+  if (!seq) return estado(el, 'Primero extrae una imagen.', true);
+  if (!L.length) return estado(el, 'Escribe un texto propuesto.', true);
+  const n = Math.min(L.length, seq.length); let mal = 0, primero = -1;
+  for (let k = 0; k < n; k++) if (valorDe(L[k]) !== seq[k]) { mal++; if (primero < 0) primero = k; }
+  if (mal) return estado(el, `${fmt(mal)} de ${fmt(n)} letras no coinciden con el color; la primera es la posición ${primero + 1} (${L[primero]} vale ${valorDe(L[primero])}, el color indica ${seq[primero]}).`, true);
+  estado(el, L.length === seq.length ? `Compatible: las ${fmt(n)} letras coinciden con los colores. Un texto compatible no prueba que sea el original, porque cada color admite tres letras.`
+    : `Las primeras ${fmt(n)} letras coinciden con los colores; la imagen contiene ${fmt(seq.length)} posiciones y propusiste ${fmt(L.length)}.`);
+};
+
+/* ============================ EVENTOS ============================ */
+function pestaña(cual) {
+  $('#panGen').classList.toggle('hidden', cual !== 'gen'); $('#panLee').classList.toggle('hidden', cual !== 'lee');
+  $('#tabGen').setAttribute('aria-selected', cual === 'gen'); $('#tabLee').setAttribute('aria-selected', cual === 'lee');
+}
+$('#tabGen').onclick = () => pestaña('gen'); $('#tabLee').onclick = () => pestaña('lee');
+$('#leyenda').innerHTML = Object.keys(HEX).map(v => `<span class="chip"><i style="background:${HEX[v]}"></i>${v} · ${NOMBRE_COLOR[v]} · ${HEX[v]} · ${[...GRUPOS[v]].join(' ')}</span>`).join('');
+const hints = { auto: 'Cada letra usa 2 celdas: [color del valor cromático][sub-índice de la letra, del 1 al 3]. Lleva cabecera con la longitud y un checksum, así que se decodifica solo con la imagen. Si el total no completa un cuadrado, se rellena con colores derivados de π.',
+  puro: 'Una celda por letra, exactamente como el script Python (lado = raíz entera del total; las letras sobrantes se omiten). El color solo guarda el valor 1–9, así que para leerla hace falta el índice CSV.' };
+$('#gModo').onchange = () => $('#gModoHint').textContent = hints[$('#gModo').value]; $('#gModoHint').textContent = hints.auto;
+$('#gCargar').onclick = () => $('#gArchivo').click();
+$('#gArchivo').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  $('#gTexto').value = textoDeArchivo(await f.text());
+};
+$('#gEjemplo').onclick = () => $('#gTexto').value = 'En un lugar de la Mancha, de cuyo nombre no quiero acordarme, no ha mucho tiempo que vivía un hidalgo de los de lanza en astillero, adarga antigua, rocín flaco y galgo corredor. Una olla de algo más vaca que carnero, salpicón las más noches, duelos y quebrantos los sábados, lentejas los viernes, algún palomino de añadidura los domingos.';
+$('#gGenerar').onclick = generar;
+$('#gPng').onclick = () => $('#gCanvas').toBlob(b => descargar(`matriz_pi_${G.modo}_${G.side}x${G.side}.png`, b), 'image/png');
+$('#gCsv').onclick = () => descargar('indice_coordenadas.csv', csvIndice(), 'text/csv;charset=utf-8');
+$('#gMeta').onclick = async () => descargar('metadatos.json', await metadatosJson(), 'application/json');
+$('#gPi').onclick = () => descargar('pi_digitos.txt', PI.str || [...PI.digs].join(''));
+$('#gLeer').onclick = () => { $('#gCanvas').toBlob(b => { setPng(new File([b], 'matriz_generada.png', { type: 'image/png' })); $('#rEscala').value = G.escala;
+  $('#rCsv').value = ''; $('#rMeta').value = ''; pestaña('lee'); estado($('#rEstado'), G.modo === 'puro' ? 'Imagen cargada. Es del protocolo puro: elige el índice CSV descargado en "Archivos opcionales".' : 'Imagen cargada. Pulsa "Extraer texto".'); }, 'image/png'); };
+for (const id of ['#gCsv', '#gPi']) $(id).classList.add('hidden');
+const drop = $('#rDrop');
+drop.onclick = () => $('#rPng').click();
+$('#rPng').onchange = e => setPng(e.target.files[0] || null);
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) setPng(f); };
+$('#rLeer').onclick = () => extraer();
+$('#rCopiar').onclick = async () => { await navigator.clipboard.writeText($('#rTexto').value); estado($('#rEstado'), 'Texto copiado.'); };
+$('#rBajar').onclick = () => descargar('texto_reconstruido.txt', $('#rTexto').value);
+
+/* ============================ VOZ: DICTADO Y LECTURA EN VOZ ALTA ============================ */
+const VOZ = { sintesis: 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window, voz: null, ticket: 0, reconocedor: null, botonActivo: null };
+const vEstado = t => { $('#vEstado').textContent = t; };
+function elegirVoz() { if (!VOZ.sintesis) return; const l = speechSynthesis.getVoices(); VOZ.voz = l.find(v => v.lang === 'es-ES') || l.find(v => v.lang === 'es-MX') || l.find(v => v.lang.indexOf('es') === 0) || null; }
+if (VOZ.sintesis) { elegirVoz(); speechSynthesis.onvoiceschanged = elegirVoz; }
+const aVoz = s => s.replace(/π/g, 'pi').replace(/×/g, ' por ').replace(/%/g, ' por ciento').replace(/SHA-256/g, 'S H A doscientos cincuenta y seis').replace(/[()·→←]/g, ' ').replace(/\s+/g, ' ').trim();
+function decirCola(trozos) {
+  if (!VOZ.sintesis) { vEstado('Este navegador no admite lectura en voz alta.'); return; }
+  speechSynthesis.cancel(); const mi = ++VOZ.ticket; let i = 0;
+  (function sig() {
+    if (mi !== VOZ.ticket || i >= trozos.length) { if (mi === VOZ.ticket) vEstado('Lectura terminada.'); return; }
+    const u = new SpeechSynthesisUtterance(trozos[i++]); u.lang = VOZ.voz ? VOZ.voz.lang : 'es-ES'; if (VOZ.voz) u.voice = VOZ.voz;
+    u.onstart = () => vEstado(`Leyendo, parte ${i} de ${trozos.length}…`); u.onend = sig; u.onerror = () => { if (mi === VOZ.ticket) sig(); };
+    speechSynthesis.speak(u);
+  })();
+}
+function detenerVoz() { VOZ.ticket++; if (VOZ.sintesis) speechSynthesis.cancel(); vEstado('Voz detenida.'); }
+function trozosDeLetras(letras, modo) {
+  const out = [], tam = modo === 'letras' ? 100 : 400;
+  for (let i = 0; i < letras.length; i += tam) {
+    const g = letras.slice(i, i + tam);
+    out.push(modo === 'letras' ? g.map((l, k) => (k % 5 === 4 ? l + ',' : l)).join(' ') : g.join('').toLowerCase());
+  }
+  return out;
+}
+/* Lee en voz alta únicamente el texto que entrega el lector; nada del resto de la página. */
+function leerResultado() {
+  if ($('#rTextoBox').classList.contains('hidden') || !$('#rTexto').value.trim()) { vEstado('No hay texto reconstruido que leer. Extraiga primero una imagen.'); return; }
+  decirCola(trozosDeLetras(soloLetras($('#rTexto').value), $('#vModo').value));
+}
+$('#vLeer').onclick = leerResultado; $('#vParar').onclick = detenerVoz;
+
+/* Dictado: reconocimiento de voz del navegador, en español. */
+const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
+function pararDictado() { if (VOZ.reconocedor) { try { VOZ.reconocedor.stop(); } catch (e) { /* ya detenido */ } } }
+function dictar(boton) {
+  if (!Reconocimiento) { vEstado('Este navegador no admite dictado por voz. Use Chrome o Edge.'); return; }
+  const activo = VOZ.botonActivo === boton; pararDictado(); if (activo) return;
+  const destino = document.getElementById(boton.dataset.destino), r = new Reconocimiento();
+  r.lang = 'es-ES'; r.continuous = true; r.interimResults = true;
+  let base = destino.value ? destino.value.replace(/\s*$/, ' ') : '';
+  r.onresult = e => { let fin = '', prov = ''; for (let i = e.resultIndex; i < e.results.length; i++) (e.results[i].isFinal ? (fin += e.results[i][0].transcript) : (prov += e.results[i][0].transcript)); base += fin; destino.value = base + prov; };
+  r.onerror = e => vEstado(e.error === 'not-allowed' ? 'El navegador no tiene permiso para usar el micrófono.' : `Error de dictado: ${e.error}.`);
+  r.onend = () => { boton.textContent = 'Dictar'; boton.classList.remove('rec'); boton.classList.add('sec'); destino.value = base.trim(); VOZ.botonActivo = null; vEstado('Dictado detenido.'); };
+  VOZ.reconocedor = r; VOZ.botonActivo = boton; boton.textContent = 'Detener dictado'; boton.classList.remove('sec'); boton.classList.add('rec');
+  detenerVoz(); vEstado('Escuchando… hable en español.'); r.start();
+}
+$('#gDictar').onclick = e => dictar(e.currentTarget); $('#tDictar').onclick = e => dictar(e.currentTarget);
+if (!Reconocimiento) { $('#gDictar').title = $('#tDictar').title = 'Este navegador no admite dictado por voz'; }
+
+/* ============================ CÁMARA (PC y celular) ============================
+   La imagen de una cámara no es exacta: se recorta el recuadro guía, se muestrea el centro de cada celda
+   y se asigna el color más cercano de la paleta. El modo autónomo se valida con su cabecera y su suma de control. */
+const CAM = { stream: null, timer: null, ocupado: false, foto: null, csv: { clave: '', lado: 0 } };
+const LADO_CAMARA_MAX = 100, TAM_MUESTRA = 512;
+const cEstado = (t, err) => estado($('#cEstado'), t, err);
+
+async function listarCamaras() {
+  try {
+    const d = (await navigator.mediaDevices.enumerateDevices()).filter(x => x.kind === 'videoinput'), s = $('#cSel');
+    s.innerHTML = d.map((x, i) => `<option value="${x.deviceId}">${x.label || 'Cámara ' + (i + 1)}</option>`).join('');
+    const pista = CAM.stream && CAM.stream.getVideoTracks()[0], act = pista && pista.getSettings().deviceId; if (act) s.value = act;
+    $('#cAlternar').classList.toggle('hidden', d.length < 2 && !(pista && pista.getSettings().facingMode));
+  } catch (e) { /* sin lista de cámaras */ }
+}
+function ajustarGuia() {
+  const v = $('#cVideo'), w = v.videoWidth, h = v.videoHeight; if (!w || !h) return;
+  const f = (parseInt($('#cTam').value) || 90) / 100, m = Math.min(w, h), g = $('#cGuia');
+  g.style.width = (f * m / w * 100) + '%'; g.style.height = (f * m / h * 100) + '%';
+}
+async function abrirCamara(restricciones) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cEstado('Este navegador o esta dirección no permite abrir la cámara. Use «Tomar foto o elegir imagen» o abra la página desde una dirección segura (https).', true); return; }
+  cerrarCamara(true);
+  try {
+    try { CAM.stream = await navigator.mediaDevices.getUserMedia({ video: restricciones || { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }); }
+    catch (e) { if (e && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError') && !restricciones) CAM.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); else throw e; }
+    const v = $('#cVideo'); v.srcObject = CAM.stream; v.onloadedmetadata = ajustarGuia; await v.play();
+    for (const id of ['#cMarco', '#cControles', '#cAcciones', '#cCerrar']) $(id).classList.remove('hidden'); $('#cAbrir').classList.add('hidden');
+    await listarCamaras(); ajustarGuia();
+    cEstado('Cámara abierta. Encuadre la matriz dentro del recuadro y pulse «Capturar y leer», o deje el escaneo continuo activado.');
+    if ($('#cContinuo').checked) iniciarEscaneo();
+  } catch (e) {
+    cEstado(e && e.name === 'NotAllowedError' ? 'El navegador no tiene permiso para usar la cámara. Autorícela en la barra de direcciones e inténtelo de nuevo.'
+      : e && e.name === 'NotFoundError' ? 'No se encontró ninguna cámara en este equipo.' : `No se pudo abrir la cámara: ${e && e.message ? e.message : e}`, true);
+  }
+}
+function cerrarCamara(silencio) {
+  detenerEscaneo();
+  if (CAM.stream) { CAM.stream.getTracks().forEach(p => p.stop()); CAM.stream = null; }
+  $('#cVideo').srcObject = null;
+  for (const id of ['#cMarco', '#cControles', '#cAcciones', '#cCerrar', '#cAlternar']) $(id).classList.add('hidden'); $('#cAbrir').classList.remove('hidden');
+  if (!silencio) cEstado('Cámara cerrada.');
+}
+function fuenteActual() { const v = $('#cVideo'); return v.videoWidth ? { el: v, w: v.videoWidth, h: v.videoHeight } : null; }
+function recorte(fuente, frac) {
+  const c = document.createElement('canvas'); c.width = c.height = TAM_MUESTRA;
+  const ctx = c.getContext('2d', { willReadFrequently: true }), lado = Math.min(fuente.w, fuente.h) * Math.min(1, frac);
+  ctx.drawImage(fuente.el, (fuente.w - lado) / 2, (fuente.h - lado) / 2, lado, lado, 0, 0, TAM_MUESTRA, TAM_MUESTRA);
+  return ctx.getImageData(0, 0, TAM_MUESTRA, TAM_MUESTRA);
+}
+function gananciaExposicion(d) {            // ganancia común: lleva el brillo alto de la imagen hacia 255
+  const h = new Uint32Array(256); let n = 0;
+  for (let i = 0; i < d.length; i += 16) { h[Math.max(d[i], d[i + 1], d[i + 2])]++; n++; }
+  let acum = 0, p90 = 255; for (let v = 255; v >= 0; v--) { acum += h[v]; if (acum >= n * 0.1) { p90 = v; break; } }
+  return p90 >= 235 ? 1 : Math.max(0.6, Math.min(3, 255 / Math.max(p90, 1)));
+}
+const PALETA = Object.entries(RGB).map(([v, c]) => [+v, c]);
+function muestrear(img, side, ganancia) {
+  const d = img.data, W = img.width, cs = W / side, g = new Uint8Array(side * side);
+  for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) {
+    const x0 = Math.floor((x + 0.25) * cs), x1 = Math.max(x0 + 1, Math.ceil((x + 0.75) * cs)), y0 = Math.floor((y + 0.25) * cs), y1 = Math.max(y0 + 1, Math.ceil((y + 0.75) * cs));
+    let r = 0, gg = 0, b = 0, n = 0;
+    for (let yy = y0; yy < y1; yy++) for (let xx = x0; xx < x1; xx++) { const o = (yy * W + xx) * 4; r += d[o]; gg += d[o + 1]; b += d[o + 2]; n++; }
+    r = Math.min(255, r / n * ganancia); gg = Math.min(255, gg / n * ganancia); b = Math.min(255, b / n * ganancia);
+    let mejor = 1e18, val = 1;
+    for (const [v, c] of PALETA) { const dist = (r - c[0]) ** 2 + (gg - c[1]) ** 2 + (b - c[2]) ** 2; if (dist < mejor) { mejor = dist; val = v; } }
+    g[y * side + x] = val;
+  }
+  return g;
+}
+async function ladoDeCsv(file) {
+  const clave = file.name + ':' + file.size + ':' + file.lastModified; if (CAM.csv.clave === clave) return CAM.csv.lado;
+  const txt = await file.text(); let n = 0; for (const l of txt.split('\n').slice(1)) if (l.trim()) n++;
+  const lado = Math.round(Math.sqrt(n)); CAM.csv = { clave, lado: lado * lado === n ? lado : 0 }; return CAM.csv.lado;
+}
+/* Devuelve { side, grilla } cuando la lectura es válida (autónomo) o cuando el lado se conoce por el índice o por el usuario. */
+async function leerDesdeFuente(fuente, soloAutonomo) {
+  const frac = (parseInt($('#cTam').value) || 90) / 100, manual = parseInt($('#cLado').value) || 0, csv = $('#rCsv').files[0];
+  let candidatos = [];
+  if (csv && !soloAutonomo) { const s = await ladoDeCsv(csv); if (!s) throw new Error('El índice CSV no tiene un número de filas que forme un cuadrado perfecto.'); candidatos = [s]; }
+  else if (manual >= 2) candidatos = [manual];
+  else for (let s = 4; s <= LADO_CAMARA_MAX; s++) candidatos.push(s);
+  const maxN = Math.max(...candidatos) ** 2, digs = await asegurarPi(digitosNecesarios(maxN), $('#cEstado'));
+  const conIndice = !!csv && !soloAutonomo, variantes = [1, 0.97, 1.03, 0.94, 1.06, 0.91, 1.09];
+  if (conIndice) {                        // con índice: se elige el encuadre que mejor coincide (solo alinea; la verificación cuenta las diferencias reales)
+    let ref = null; try { ref = parseIndice(await csv.text(), candidatos[0]).val; } catch (e) { /* se usa el encuadre central */ }
+    let mejor = null;
+    for (const k of variantes) {
+      const img = recorte(fuente, frac * k), grilla = muestrear(img, candidatos[0], gananciaExposicion(img.data));
+      let dif = 0; if (ref) for (let c = 0; c < grilla.length; c++) if (grilla[c] !== ref[c]) dif++;
+      if (!mejor || dif < mejor.dif) mejor = { side: candidatos[0], grilla, dif };
+      if (!ref || dif === 0) break;
+    }
+    return { side: mejor.side, grilla: mejor.grilla };
+  }
+  for (const k of variantes) {
+    const img = recorte(fuente, frac * k), gan = gananciaExposicion(img.data);
+    for (const s of candidatos) {
+      const grilla = muestrear(img, s, gan);
+      if (conIndice) return { side: s, grilla };
+      const r = decodificarAuto(grilla, s, digs); if (r.ok) return { side: s, grilla };
+    }
+  }
+  if (!soloAutonomo && candidatos.length === 1) return { side: candidatos[0], grilla: muestrear(recorte(fuente, frac), candidatos[0], 1), sinValidar: true };
+  return null;
+}
+async function capturarYLeer(fuente) {
+  if (CAM.ocupado) return; CAM.ocupado = true; detenerEscaneo();
+  try {
+    cEstado('Leyendo el código…');
+    const r = await leerDesdeFuente(fuente || fuenteActual(), false);
+    if (!r) { cEstado('No se encontró un código válido en el recuadro. Pruebe con más luz, la cámara de frente y quieta, la matriz ocupando todo el recuadro (ajuste su tamaño) o indique las celdas por lado.', true); return; }
+    cEstado(r.sinValidar ? 'Imagen muestreada con el lado indicado; se muestra el resultado de la verificación.' : 'Código encontrado.');
+    await extraer(r); if (!r.sinValidar && CAM.stream && $('#rVeredicto').classList.contains('ok')) cerrarCamara(true);
+  } catch (e) { cEstado(e.message, true); } finally { CAM.ocupado = false; }
+}
+function iniciarEscaneo() {
+  detenerEscaneo(); if ($('#rCsv').files[0]) { cEstado('Con un índice CSV cargado use «Capturar y leer»; el escaneo continuo es para el modo autónomo.'); return; }
+  $('#cEstado').classList.remove('err'); CAM.timer = setInterval(async () => {
+    if (CAM.ocupado || !CAM.stream) return; const f = fuenteActual(); if (!f) return; CAM.ocupado = true;
+    try {
+      const r = await leerDesdeFuente(f, true);
+      if (r && !r.sinValidar) { detenerEscaneo(); cEstado('Código encontrado.'); await extraer(r); if (CAM.stream) cerrarCamara(true); }
+    } catch (e) { /* se reintenta en el siguiente ciclo */ } finally { CAM.ocupado = false; }
+  }, 900);
+}
+function detenerEscaneo() { if (CAM.timer) { clearInterval(CAM.timer); CAM.timer = null; } }
+
+$('#cAbrir').onclick = () => abrirCamara();
+$('#cCerrar').onclick = () => cerrarCamara();
+$('#cSel').onchange = () => abrirCamara({ deviceId: { exact: $('#cSel').value } });
+$('#cAlternar').onclick = () => {
+  const s = $('#cSel'); if (s.options.length > 1) { s.selectedIndex = (s.selectedIndex + 1) % s.options.length; s.onchange(); return; }
+  const f = CAM.stream && CAM.stream.getVideoTracks()[0].getSettings().facingMode;
+  abrirCamara({ facingMode: { ideal: f === 'user' ? 'environment' : 'user' } });
+};
+$('#cTam').oninput = ajustarGuia;
+$('#cContinuo').onchange = () => { if ($('#cContinuo').checked && CAM.stream) iniciarEscaneo(); else detenerEscaneo(); };
+$('#cCapturar').onclick = () => capturarYLeer();
+$('#cTomar').onclick = () => $('#cFoto').click();
+$('#cFoto').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return; const url = URL.createObjectURL(f);
+  try { const img = new Image(); img.src = url; await img.decode(); await capturarYLeer({ el: img, w: img.naturalWidth, h: img.naturalHeight }); }
+  catch (err) { cEstado('No se pudo abrir la imagen elegida.', true); } finally { URL.revokeObjectURL(url); e.target.value = ''; }
+};
+document.addEventListener('visibilitychange', () => { if (document.hidden && CAM.stream) cerrarCamara(); });
+window.addEventListener('pagehide', () => cerrarCamara(true));
+</script>
+</body>
+</html>
